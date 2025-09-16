@@ -26,10 +26,12 @@ jobs:
           cache: 'npm'
 
       # 3. Instala las dependencias
-      - name: Instalar dependencias
+      - name: Instalar dependencias del FrontEnd
+        working-directory: ./frontend
         run: npm install
 
       # 4. Ejecuta el Linter para revisar el estilo del código (¡IMPORTANTE!)
       # Este paso fallará si el código no sigue las reglas de estilo.
       - name: Validar estilo de código (Lint)
+        working-directory: ./frontend
         run: npm run lint # Necesitas configurar este script en tu package.json
