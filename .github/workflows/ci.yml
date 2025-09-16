@@ -1,0 +1,37 @@
+name: CI de Validación
+
+# Se ejecuta en cada push y en cada pull request a las ramas main y develop
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  # El trabajo se llama "build-and-test"
+  build-and-test:
+    # Se ejecutará en una máquina virtual de Ubuntu
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Clona el código del repositorio
+      - name: Checkout del código
+        uses: actions/checkout@v3
+
+      # 2. Configura el entorno de Node.js
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18' # Usa la versión de Node que necesites
+          cache: 'npm'
+
+      # 3. Instala las dependencias
+      - name: Instalar dependencias del FrontEnd
+        working-directory: ./frontend
+        run: npm install
+
+      # 4. Ejecuta el Linter para revisar el estilo del código (¡IMPORTANTE!)
+      # Este paso fallará si el código no sigue las reglas de estilo.
+      - name: Validar estilo de código (Lint)
+        working-directory: ./frontend
+        run: npm run lint # Necesitas configurar este script en tu package.json
