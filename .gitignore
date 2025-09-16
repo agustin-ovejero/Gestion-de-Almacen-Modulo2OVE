@@ -1,0 +1,58 @@
+# ===================================================================
+# Archivo .gitignore Universal para el Monorepo
+# ===================================================================
+
+# === Dependencias ===
+# Nunca subir las dependencias, se instalan con 'npm install'
+node_modules/
+**/node_modules/
+
+# === Archivos de Log y Debug ===
+# Generados por npm, yarn o herramientas de debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# === Archivos de Variables de Entorno (¡CRÍTICO!) ===
+# Contienen secretos y configuración local. NUNCA deben subirse.
+.env
+.env.local
+.env.*.local
+**/.*.env
+**/.env
+
+# === Reportes de Pruebas y Cobertura ===
+# Generados al ejecutar los tests
+coverage/
+**/coverage/
+
+# === Archivos de Build y Distribución ===
+# El código compilado o empaquetado que se genera a partir del fuente
+dist/
+build/
+out/
+.next/
+
+# Específico de Electron
+release/
+*.exe
+*.dmg
+*.deb
+*.rpm
+*.AppImage
+
+# === Archivos del Sistema Operativo ===
+# Basura generada por macOS, Windows y Linux
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# === Archivos de Configuración de IDEs ===
+# Cada desarrollador tiene sus propias preferencias de editor
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
