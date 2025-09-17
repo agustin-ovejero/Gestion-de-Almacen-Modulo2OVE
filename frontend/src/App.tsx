@@ -1,35 +1,33 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { HashRouter, Routes, Route, Link } from 'react-router-dom';
+
+const HomePage = () => <h2>Dashboard Principal</h2>;
+const MapPage = () => <h2>Mapa de Ubicaciones</h2>;
+const NotFoundPage = () => <h2>404 - Página no encontrada</h2>;
 
 function App() {
-  const [count, setCount] = useState(0)
-
   return (
-    <>
+    <HashRouter>
       <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
+        <h1>Módulo de Gestión de Almacén</h1>
+        <nav style={{ borderBottom: '1px solid #ccc', paddingBottom: '10px' }}>
+          <Link to="/" style={{ marginRight: '10px' }}>
+            Dashboard
+          </Link>
+          <Link to="/map">Mapa</Link>
+          <li>aaa</li>
+        </nav>
+
+        <main style={{ paddingTop: '20px' }}>
+          {/* Aquí se renderizará el componente de la página actual */}
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/map" element={<MapPage />} />
+            <Route path="*" element={<NotFoundPage />} />
+          </Routes>
+        </main>
       </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+    </HashRouter>
+  );
 }
 
-export default App
+export default App;
