@@ -2,20 +2,23 @@
   "name": "frontend",
   "private": true,
   "version": "0.0.0",
-  "type": "module",
+  "main": "main.js",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
-    "start": "electron .",
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
-    "format": "prettier --write .",
-    "preview": "vite preview"
+    "dev": "concurrently \"npm:vite:dev\" \"npm:electron:dev\"",
+    "vite:dev": "vite",
+    "electron:dev": "nodemon --watch main.js --watch preload.js --exec \"electron .\"",
+    "build": "vite build && electron-builder",
+    "lint": "eslint . --ext js,jsx,ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "lint:fix": "eslint . --ext js,jsx,ts,tsx --report-unused-disable-directives --max-warnings 0 --fix",
+    "format": "prettier --write ."
   },
   "dependencies": {
+    "concurrently": "^9.2.1",
+    "electron": "^38.1.1",
+    "electron-squirrel-startup": "^1.0.1",
     "react": "^19.1.1",
-    "react-dom": "^19.1.1"
+    "react-dom": "^19.1.1",
+    "react-router-dom": "^7.9.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.33.0",
