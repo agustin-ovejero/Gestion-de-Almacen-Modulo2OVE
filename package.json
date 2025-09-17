@@ -7,9 +7,13 @@
     "prepare": "husky install"
   },
   "lint-staged": {
-  "frontend/**/*.{js,jsx,ts,tsx}": [
-    "cd frontend && npm run lint:fix",
-    "cd frontend && npm run format"
-  ]
+    "backend/**/*.{js,ts}": [
+      "cd backend && npm run lint:fix",
+      "cd backend && npm run format"
+    ],
+    "frontend/**/*.{js,jsx,ts,tsx}": [
+      "cd frontend && npm run lint:fix",
+      "cd frontend && npm run format"
+    ]
 }
 }
