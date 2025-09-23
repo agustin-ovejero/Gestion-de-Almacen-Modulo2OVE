@@ -1,7 +1,8 @@
 {
   "devDependencies": {
     "husky": "^8.0.0",
-    "lint-staged": "^16.1.6"
+    "lint-staged": "^16.1.6",
+    "msw": "^2.11.3"
   },
   "scripts": {
     "prepare": "husky install"
@@ -15,5 +16,5 @@
       "npm run lint:fix --prefix frontend",
       "npm run format --prefix frontend"
     ]
-}
+  }
 }
