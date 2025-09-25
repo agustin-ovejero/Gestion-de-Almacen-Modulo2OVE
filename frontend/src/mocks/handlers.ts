@@ -124,17 +124,76 @@ const generarMovimientosPorDia = () => {
   return dias;
 };
 
-// Datos mock para el dashboard
-const dashboardData: DashboardData = {
+// Estado global del dashboard
+const dashboardState: DashboardData = {
   totalPallets: 245,
   ocupacionAlmacen: 78, // porcentaje
   stockTotal: 1245,
-  movimientosHoy: 28,
+  movimientosHoy: 30,
   tendenciaOcupacion: 'arriba',
   porcentajeCambio: 5,
   movimientosPorDia: generarMovimientosPorDia(),
   actividadReciente: movimientos.slice(0, 10), // Últimos 10 movimientos
 };
+
+// Función para actualizar el estado del dashboard
+function actualizarDashboard(nuevoMovimiento: Movimiento): DashboardData {
+  // Crear una copia del estado actual
+  const estadoAnterior = { ...dashboardState };
+
+  // Actualizar movimientos de hoy
+  dashboardState.movimientosHoy += 1;
+
+  // Actualizar stock total basado en el tipo de movimiento
+  if (nuevoMovimiento.tipo === 'entrada') {
+    dashboardState.stockTotal += nuevoMovimiento.cantidad;
+  } else {
+    dashboardState.stockTotal = Math.max(
+      0,
+      dashboardState.stockTotal - nuevoMovimiento.cantidad
+    );
+  }
+
+  // Actualizar ocupación (ejemplo simplificado)
+  const cambioOcupacion = nuevoMovimiento.tipo === 'entrada' ? 2 : -1;
+  const nuevaOcupacion = Math.min(
+    100,
+    Math.max(0, dashboardState.ocupacionAlmacen + cambioOcupacion)
+  );
+
+  // Actualizar tendencia
+  if (nuevaOcupacion > estadoAnterior.ocupacionAlmacen) {
+    dashboardState.tendenciaOcupacion = 'arriba';
+  } else if (nuevaOcupacion < estadoAnterior.ocupacionAlmacen) {
+    dashboardState.tendenciaOcupacion = 'abajo';
+  } else {
+    dashboardState.tendenciaOcupacion = 'estable';
+  }
+
+  dashboardState.ocupacionAlmacen = nuevaOcupacion;
+
+  // Actualizar actividad reciente (máximo 10 elementos)
+  dashboardState.actividadReciente = [
+    nuevoMovimiento,
+    ...dashboardState.actividadReciente.slice(0, 9),
+  ];
+
+  // Actualizar movimientos por día
+  const hoy = new Date().toISOString().split('T')[0];
+  const diaActual = dashboardState.movimientosPorDia.find(
+    (d) => d.fecha === hoy
+  );
+
+  if (diaActual) {
+    if (nuevoMovimiento.tipo === 'entrada') {
+      diaActual.entradas += 1;
+    } else {
+      diaActual.salidas += 1;
+    }
+  }
+
+  return dashboardState;
+}
 
 // --- Base de Datos Falsa ---
 const mockPallets: Pallet[] = [
@@ -183,17 +242,62 @@ const mockUsers: User[] = [
 
 // --- Definición de los Endpoints Falsos ---
 export const handlers = [
-  // Endpoint para obtener datos del dashboard
+  // Endpoint para obtener todos los datos del dashboard en una sola petición
+  http.get('/api/dashboard', () => {
+    return HttpResponse.json({
+      success: true,
+      data: dashboardState,
+    });
+  }),
+
+  // Endpoint para agregar un nuevo movimiento
+  http.post('/api/movimientos', async ({ request }) => {
+    try {
+      const nuevoMovimiento = (await request.json()) as Movimiento;
+
+      // Validar el movimiento
+      if (
+        !nuevoMovimiento.tipo ||
+        !nuevoMovimiento.producto ||
+        !nuevoMovimiento.cantidad
+      ) {
+        return HttpResponse.json(
+          { success: false, message: 'Datos de movimiento inválidos' },
+          { status: 400 }
+        );
+      }
+
+      // Asignar un ID y fecha si no están presentes
+      nuevoMovimiento.id = nuevoMovimiento.id || Date.now();
+      nuevoMovimiento.fecha = nuevoMovimiento.fecha || new Date().toISOString();
+
+      // Actualizar el estado del dashboard
+      const dashboardActualizado = actualizarDashboard(nuevoMovimiento);
+
+      return HttpResponse.json({
+        success: true,
+        data: dashboardActualizado,
+      });
+    } catch (error) {
+      console.error('Error al procesar el movimiento:', error);
+      return HttpResponse.json(
+        { success: false, message: 'Error interno del servidor' },
+        { status: 500 }
+      );
+    }
+  }),
+
+  // Endpoint para obtener datos resumidos del dashboard
   http.get('/api/dashboard/estadisticas', () => {
     return HttpResponse.json({
       success: true,
       data: {
-        totalPallets: dashboardData.totalPallets,
-        ocupacionAlmacen: dashboardData.ocupacionAlmacen,
-        stockTotal: dashboardData.stockTotal,
-        movimientosHoy: dashboardData.movimientosHoy,
-        tendenciaOcupacion: dashboardData.tendenciaOcupacion,
-        porcentajeCambio: dashboardData.porcentajeCambio,
+        totalPallets: dashboardState.totalPallets,
+        ocupacionAlmacen: dashboardState.ocupacionAlmacen,
+        stockTotal: dashboardState.stockTotal,
+        movimientosHoy: dashboardState.movimientosHoy,
+        tendenciaOcupacion: dashboardState.tendenciaOcupacion,
+        porcentajeCambio: dashboardState.porcentajeCambio,
       },
     });
   }),
@@ -202,7 +306,7 @@ export const handlers = [
   http.get('/api/dashboard/movimientos-por-dia', () => {
     return HttpResponse.json({
       success: true,
-      data: dashboardData.movimientosPorDia,
+      data: dashboardState.movimientosPorDia,
     });
   }),
 
@@ -210,7 +314,7 @@ export const handlers = [
   http.get('/api/dashboard/actividad-reciente', () => {
     return HttpResponse.json({
       success: true,
-      data: dashboardData.actividadReciente,
+      data: dashboardState.actividadReciente,
     });
   }),
 

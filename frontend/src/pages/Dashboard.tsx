@@ -1,361 +1,356 @@
-import React, { useState } from 'react';
-import { Bar } from 'react-chartjs-2';
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  LineElement,
-  PointElement,
-  Title,
-  Tooltip,
-  Legend,
-  ArcElement,
-} from 'chart.js';
-
-// Registrar componentes de Chart.js
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  LineElement,
-  PointElement,
-  Title,
-  Tooltip,
-  Legend,
-  ArcElement
-);
-
-// Tipos para TypeScript
-type Movimiento = {
-  id: number;
-  tipo: 'entrada' | 'salida';
-  producto: string;
-  cantidad: number;
-  fecha: string;
-  usuario: string;
-};
-
-type Metrica = {
-  titulo: string;
-  valor: number | string;
-  icono: string;
-  color: string;
-  tendencia?: 'arriba' | 'abajo' | 'neutro';
-  porcentaje?: string;
-};
+import React, { useEffect, useState, useCallback } from 'react';
+import { cargarDatosDashboard, agregarMovimiento } from '../utils/api';
+import type { DashboardData } from '../types';
 
 const Dashboard: React.FC = () => {
-  // Datos mockeados
-  const [movimientos] = useState<Movimiento[]>([
-    {
-      id: 1,
-      tipo: 'entrada',
-      producto: 'Producto A',
-      cantidad: 10,
-      fecha: '2025-09-24 10:30:00',
-      usuario: 'usuario1',
-    },
-    {
-      id: 2,
-      tipo: 'salida',
-      producto: 'Producto B',
-      cantidad: 5,
-      fecha: '2025-09-24 09:15:00',
-      usuario: 'usuario2',
-    },
-    {
-      id: 3,
-      tipo: 'entrada',
-      producto: 'Producto C',
-      cantidad: 20,
-      fecha: '2025-09-23 16:45:00',
-      usuario: 'usuario1',
-    },
-    {
-      id: 4,
-      tipo: 'salida',
-      producto: 'Producto A',
-      cantidad: 8,
-      fecha: '2025-09-23 14:20:00',
-      usuario: 'usuario3',
-    },
-    {
-      id: 5,
-      tipo: 'entrada',
-      producto: 'Producto B',
-      cantidad: 15,
-      fecha: '2025-09-22 11:10:00',
-      usuario: 'usuario2',
-    },
-  ]);
+  const [dashboardData, setDashboardData] = useState<DashboardData | null>(
+    null
+  );
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Datos para las tarjetas de métricas
-  const [metricas] = useState<Metrica[]>([
-    {
-      titulo: 'Total de Pallets',
-      valor: '245',
-      icono: '📦',
-      color: 'bg-blue-100 text-blue-600',
-      tendencia: 'arriba',
-      porcentaje: '12%',
-    },
-    {
-      titulo: 'Ocupación del Almacén',
-      valor: '78%',
-      icono: '🏭',
-      color: 'bg-green-100 text-green-600',
-      tendencia: 'arriba',
-      porcentaje: '5%',
-    },
-    {
-      titulo: 'Stock Total',
-      valor: '1,245',
-      icono: '📊',
-      color: 'bg-purple-100 text-purple-600',
-      tendencia: 'neutro',
-    },
-    {
-      titulo: 'Movimientos Hoy',
-      valor: '28',
-      icono: '🔄',
-      color: 'bg-yellow-100 text-yellow-600',
-      tendencia: 'abajo',
-      porcentaje: '8%',
-    },
-  ]);
-
-  // Datos para el gráfico de movimientos por día
-  const movimientosPorDia = {
-    labels: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'],
-    datasets: [
-      {
-        label: 'Entradas',
-        data: [12, 19, 3, 5, 2, 3, 7],
-        backgroundColor: 'rgba(75, 192, 192, 0.6)',
-        borderColor: 'rgba(75, 192, 192, 1)',
-        borderWidth: 1,
-      },
-      {
-        label: 'Salidas',
-        data: [8, 15, 5, 8, 3, 5, 9],
-        backgroundColor: 'rgba(255, 99, 132, 0.6)',
-        borderColor: 'rgba(255, 99, 132, 1)',
-        borderWidth: 1,
-      },
-    ],
-  };
-
-  // Datos para el gráfico de ocupación (actualmente no se usa, se muestra un indicador visual simple)
-  // Se mantiene comentado en caso de necesitarlo en el futuro
-  /*
-  const ocupacionAlmacen = {
-    labels: ['Ocupado', 'Disponible'],
-    datasets: [
-      {
-        data: [78, 22],
-        backgroundColor: ['#4F46E5', '#E5E7EB'],
-        borderWidth: 0,
-      },
-    ],
-  };
-  */
-
-  const optionsMovimientos = {
-    responsive: true,
-    plugins: {
-      legend: {
-        position: 'top' as const,
-      },
-      title: {
-        display: true,
-        text: 'Movimientos por Día',
-      },
-    },
-    scales: {
-      y: {
-        beginAtZero: true,
-      },
-    },
-  };
-
-  // Opciones para el gráfico de ocupación (actualmente no se usa)
-  // Se mantiene comentado en caso de necesitarlo en el futuro
-  /*
-  const optionsOcupacion = {
-    responsive: true,
-    plugins: {
-      legend: {
-        position: 'top' as const,
-      },
-      title: {
-        display: true,
-        text: 'Ocupación del Almacén',
-      },
-    },
-  };
-  */
-
-  // Formatear fecha para mostrar en la tabla
-  const formatearFecha = (fechaString: string) => {
-    const opciones: Intl.DateTimeFormatOptions = {
+  // Función para formatear fechas
+  const formatDate = (dateString: string) => {
+    const options: Intl.DateTimeFormatOptions = {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
     };
-    return new Date(fechaString).toLocaleDateString('es-ES', opciones);
+    return new Date(dateString).toLocaleDateString('es-ES', options);
   };
 
-  return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold text-gray-800 mb-6">
-        Panel de Control
-      </h1>
+  // Ícono de tendencia
+  const renderTrendIcon = (tendencia: 'arriba' | 'abajo' | 'estable') => {
+    switch (tendencia) {
+      case 'arriba':
+        return <span className="text-green-500">↗</span>;
+      case 'abajo':
+        return <span className="text-red-500">↘</span>;
+      default:
+        return <span className="text-gray-500">→</span>;
+    }
+  };
 
-      {/* Tarjetas de Métricas */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        {metricas.map((metrica, index) => (
-          <div key={index} className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-500 text-sm font-medium">
-                  {metrica.titulo}
-                </p>
-                <p className="text-2xl font-bold mt-1">{metrica.valor}</p>
-                {metrica.porcentaje && (
-                  <div
-                    className={`flex items-center mt-2 text-sm ${metrica.tendencia === 'arriba' ? 'text-green-600' : metrica.tendencia === 'abajo' ? 'text-red-600' : 'text-gray-600'}`}
-                  >
-                    {metrica.tendencia === 'arriba'
-                      ? '↑'
-                      : metrica.tendencia === 'abajo'
-                        ? '↓'
-                        : '→'}
-                    <span className="ml-1">
-                      {metrica.porcentaje}{' '}
-                      {metrica.tendencia === 'arriba'
-                        ? 'más'
-                        : metrica.tendencia === 'abajo'
-                          ? 'menos'
-                          : ''}{' '}
-                      que ayer
-                    </span>
-                  </div>
-                )}
-              </div>
-              <div
-                className={`p-3 rounded-full ${metrica.color} bg-opacity-30`}
-              >
-                <span className="text-2xl">{metrica.icono}</span>
-              </div>
-            </div>
-          </div>
-        ))}
+  // Cargar datos del dashboard
+  const cargarDatos = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await cargarDatosDashboard();
+      setDashboardData(data);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Cargar datos al montar el componente
+  useEffect(() => {
+    cargarDatos();
+  }, [cargarDatos]);
+
+  // Manejar adición de movimientos
+  const manejarAgregarMovimiento = async (
+    tipo: 'entrada' | 'salida',
+    producto: string,
+    cantidad: number
+  ) => {
+    try {
+      const data = await agregarMovimiento(tipo, producto, cantidad);
+      setDashboardData(data);
+      return data;
+    } catch (error) {
+      console.error('Error al agregar movimiento:', error);
+      setError('Error al agregar el movimiento');
+      throw error;
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <div className="text-xl">Cargando datos del dashboard...</div>
       </div>
+    );
+  }
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-        {/* Gráfico de Movimientos */}
-        <div className="lg:col-span-2 bg-white rounded-lg shadow p-6">
-          <Bar data={movimientosPorDia} options={optionsMovimientos} />
-        </div>
+  if (error) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <div className="text-red-500 text-xl">{error}</div>
+      </div>
+    );
+  }
 
-        {/* Gráfico de Ocupación */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="h-64 flex items-center justify-center">
-            <div className="relative w-40 h-40">
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="text-center">
-                  <p className="text-3xl font-bold">78%</p>
-                  <p className="text-gray-500 text-sm">Ocupado</p>
+  if (!dashboardData) return null;
+
+  return (
+    <div className="p-4 bg-gray-50 min-h-screen">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold text-gray-800">Panel de Control</h1>
+
+        {/* Panel de pruebas - Solo visible en desarrollo */}
+        {process.env.NODE_ENV === 'development' && (
+          <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <svg
+                  className="h-5 w-5 text-yellow-400"
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <h3 className="text-sm font-medium text-yellow-800">
+                  Modo Pruebas
+                </h3>
+                <div className="mt-2 flex space-x-2">
+                  <button
+                    onClick={() =>
+                      manejarAgregarMovimiento(
+                        'entrada',
+                        'Producto de Prueba',
+                        10
+                      )
+                    }
+                    className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                  >
+                    + Entrada (10)
+                  </button>
+                  <button
+                    onClick={() =>
+                      manejarAgregarMovimiento(
+                        'salida',
+                        'Producto de Prueba',
+                        5
+                      )
+                    }
+                    className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                  >
+                    - Salida (5)
+                  </button>
+                  <button
+                    onClick={() => cargarDatos()}
+                    className="inline-flex items-center px-3 py-1.5 border border-gray-300 text-xs font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  >
+                    ↻ Recargar Datos
+                  </button>
                 </div>
               </div>
             </div>
           </div>
-          <div className="mt-4 text-center">
-            <h3 className="text-lg font-semibold">Ocupación del Almacén</h3>
-            <p className="text-sm text-gray-500">
-              Capacidad total: 1,000 pallets
-            </p>
+        )}
+      </div>
+
+      {/* Estado actual de las métricas (solo para depuración) */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="bg-blue-50 p-4 rounded-lg mb-6 border border-blue-200">
+          <h3 className="text-sm font-medium text-blue-800 mb-2">
+            Estado Actual:
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+            <div className="bg-white p-3 rounded shadow">
+              <div className="text-gray-500 text-xs">Movimientos Hoy</div>
+              <div className="font-bold">{dashboardData.movimientosHoy}</div>
+            </div>
+            <div className="bg-white p-3 rounded shadow">
+              <div className="text-gray-500 text-xs">Stock Total</div>
+              <div className="font-bold">{dashboardData.stockTotal} u.</div>
+            </div>
+            <div className="bg-white p-3 rounded shadow">
+              <div className="text-gray-500 text-xs">Ocupación</div>
+              <div className="font-bold">{dashboardData.ocupacionAlmacen}%</div>
+            </div>
+            <div className="bg-white p-3 rounded shadow">
+              <div className="text-gray-500 text-xs">Tendencia</div>
+              <div className="font-bold">
+                {dashboardData.tendenciaOcupacion}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Estadísticas principales */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div className="bg-white p-6 rounded-lg shadow-md border-l-4 border-blue-500">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-gray-500 text-sm font-medium">
+              Total de Pallets
+            </h3>
+            <div className="text-blue-500">📦</div>
+          </div>
+          <div className="flex items-center justify-between">
+            <div className="text-2xl font-bold text-gray-800">
+              {dashboardData.totalPallets}
+            </div>
+            <div className="flex items-center text-green-500 text-sm">
+              +2.5% <span className="ml-1">↑</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white p-6 rounded-lg shadow-md border-l-4 border-green-500">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-gray-500 text-sm font-medium">
+              Ocupación del Almacén
+            </h3>
+            <div className="text-green-500">🏭</div>
+          </div>
+          <div className="flex items-center justify-between">
+            <div className="text-2xl font-bold text-gray-800">
+              {dashboardData.ocupacionAlmacen}%
+            </div>
+            <div className="flex items-center text-sm">
+              {renderTrendIcon(dashboardData.tendenciaOcupacion)}
+              <span
+                className={`ml-1 ${dashboardData.tendenciaOcupacion === 'arriba' ? 'text-green-500' : dashboardData.tendenciaOcupacion === 'abajo' ? 'text-red-500' : 'text-gray-500'}`}
+              >
+                {dashboardData.porcentajeCambio}%
+              </span>
+            </div>
+          </div>
+          <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+            <div
+              className="bg-green-500 h-2 rounded-full"
+              style={{ width: `${dashboardData.ocupacionAlmacen}%` }}
+            ></div>
+          </div>
+        </div>
+
+        <div className="bg-white p-6 rounded-lg shadow-md border-l-4 border-yellow-500">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-gray-500 text-sm font-medium">Stock Total</h3>
+            <div className="text-yellow-500">📊</div>
+          </div>
+          <div className="flex items-center justify-between">
+            <div className="text-2xl font-bold text-gray-800">
+              {dashboardData.stockTotal}
+            </div>
+            <div className="text-sm text-gray-500">unidades</div>
+          </div>
+        </div>
+
+        <div className="bg-white p-6 rounded-lg shadow-md border-l-4 border-purple-500">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-gray-500 text-sm font-medium">
+              Movimientos Hoy
+            </h3>
+            <div className="text-purple-500">🔄</div>
+          </div>
+          <div className="flex items-center justify-between">
+            <div className="text-2xl font-bold text-gray-800">
+              {dashboardData.movimientosHoy}
+            </div>
+            <div className="text-sm text-gray-500">operaciones</div>
           </div>
         </div>
       </div>
 
-      {/* Tabla de Actividad Reciente */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <div className="p-6">
-          <h2 className="text-lg font-semibold text-gray-800 mb-4">
+      {/* Gráfico de movimientos por día */}
+      <div className="bg-white p-6 rounded-lg shadow-md mb-8">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-semibold text-gray-800">
+            Movimientos por Día
+          </h2>
+          <div className="text-gray-500">📅</div>
+        </div>
+        <div className="h-64">
+          <div className="flex items-end h-48">
+            {dashboardData.movimientosPorDia.slice(-7).map((dia, index) => (
+              <div
+                key={index}
+                className="flex-1 flex flex-col items-center mx-1"
+              >
+                <div className="text-xs text-gray-500 mb-1">
+                  {new Date(dia.fecha).toLocaleDateString('es-ES', {
+                    day: 'numeric',
+                    month: 'short',
+                  })}
+                </div>
+                <div className="w-full flex justify-center space-x-1 h-full">
+                  <div
+                    className="bg-green-500 w-4 rounded-t"
+                    style={{ height: `${(dia.entradas / 20) * 100}%` }}
+                    title={`${dia.entradas} entradas`}
+                  ></div>
+                  <div
+                    className="bg-red-500 w-4 rounded-t"
+                    style={{ height: `${(dia.salidas / 20) * 100}%` }}
+                    title={`${dia.salidas} salidas`}
+                  ></div>
+                </div>
+                <div className="text-xs text-gray-500 mt-1">
+                  {dia.entradas + dia.salidas}
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="flex justify-center mt-4 space-x-6">
+            <div className="flex items-center">
+              <div className="w-3 h-3 bg-green-500 rounded-full mr-1"></div>
+              <span className="text-xs text-gray-600">Entradas</span>
+            </div>
+            <div className="flex items-center">
+              <div className="w-3 h-3 bg-red-500 rounded-full mr-1"></div>
+              <span className="text-xs text-gray-600">Salidas</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Actividad reciente */}
+      <div className="bg-white p-6 rounded-lg shadow-md">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-semibold text-gray-800">
             Actividad Reciente
           </h2>
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  >
-                    Tipo
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  >
-                    Producto
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  >
-                    Cantidad
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  >
-                    Fecha
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  >
-                    Usuario
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {movimientos.map((movimiento) => (
-                  <tr key={movimiento.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span
-                        className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${movimiento.tipo === 'entrada' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}
-                      >
-                        {movimiento.tipo === 'entrada' ? 'Entrada' : 'Salida'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {movimiento.producto}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {movimiento.cantidad} unidades
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {formatearFecha(movimiento.fecha)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {movimiento.usuario}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <div className="mt-4 flex justify-end">
-            <button className="text-sm text-indigo-600 hover:text-indigo-800 font-medium">
-              Ver todos los movimientos →
-            </button>
-          </div>
+          <div className="text-gray-500">📅</div>
+        </div>
+        <div className="max-h-96 overflow-y-auto">
+          {dashboardData.actividadReciente.map((movimiento) => (
+            <div
+              key={movimiento.id}
+              className={`p-4 mb-2 rounded-lg border ${
+                movimiento.tipo === 'entrada'
+                  ? 'bg-green-50 border-green-200'
+                  : 'bg-red-50 border-red-200'
+              }`}
+            >
+              <div className="flex justify-between items-center">
+                <div>
+                  <div className="font-medium text-gray-800">
+                    {movimiento.tipo === 'entrada' ? 'Entrada' : 'Salida'} de{' '}
+                    {movimiento.cantidad} unidades
+                  </div>
+                  <div className="text-sm text-gray-600">
+                    Producto: {movimiento.producto} •{' '}
+                    {formatDate(movimiento.fecha)}
+                  </div>
+                </div>
+                <div
+                  className={`text-lg font-bold ${
+                    movimiento.tipo === 'entrada'
+                      ? 'text-green-600'
+                      : 'text-red-600'
+                  }`}
+                >
+                  {movimiento.tipo === 'entrada' ? '+' : '-'}
+                  {movimiento.cantidad}
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </div>
