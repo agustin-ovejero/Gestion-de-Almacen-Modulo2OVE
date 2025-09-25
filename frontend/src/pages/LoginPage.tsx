@@ -1,5 +1,6 @@
 // frontend/src/pages/LoginPage.tsx
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 interface User {
   id: number;
@@ -23,6 +24,8 @@ export const LoginPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [loggedInUser, setLoggedInUser] = useState<User | null>(null);
+
+  const navigate = useNavigate();
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault(); // Previene que la página se recargue
@@ -54,6 +57,8 @@ export const LoginPage = () => {
       // Si todo va bien, guardamos los datos del usuario
       setLoggedInUser(responseData.user);
       console.log('Login exitoso:', responseData);
+      // Redirigir al dashboard
+      navigate('/dashboard');
     } catch (err: unknown) {
       const errorMessage =
         err instanceof Error ? err.message : 'Ocurrió un error inesperado';
