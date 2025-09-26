@@ -33,10 +33,14 @@ interface User {
 
 interface Pallet {
   id: number;
-  productId: number;
-  locationId: number;
-  quantity: number;
-  receivedAt: string;
+  nombre: string; // Nombre del pallet
+  estado: 'disponible' | 'en_uso' | 'mantenimiento' | 'dañado';
+  producto: string; // Nombre del producto
+  productId: number; // ID del producto (para referencias)
+  cantidad: number; // Cantidad de unidades
+  locationId: number; // Ubicación en el almacén
+  receivedAt: string; // Fecha de registro
+  updatedAt?: string; // Fecha de última actualización
 }
 
 interface Movimiento {
@@ -199,24 +203,47 @@ function actualizarDashboard(nuevoMovimiento: Movimiento): DashboardData {
 const mockPallets: Pallet[] = [
   {
     id: 1,
+    nombre: 'PALLET-001',
+    estado: 'disponible',
+    producto: 'Producto A',
     productId: 101,
+    cantidad: 50,
     locationId: 1,
-    quantity: 50,
     receivedAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   },
   {
     id: 2,
+    nombre: 'PALLET-002',
+    estado: 'en_uso',
+    producto: 'Producto B',
     productId: 102,
+    cantidad: 120,
     locationId: 2,
-    quantity: 120,
     receivedAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   },
   {
     id: 3,
+    nombre: 'PALLET-003',
+    estado: 'mantenimiento',
+    producto: 'Producto A',
     productId: 101,
+    cantidad: 75,
     locationId: 3,
-    quantity: 75,
     receivedAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: 4,
+    nombre: 'PALLET-004',
+    estado: 'dañado',
+    producto: 'Producto A',
+    productId: 101,
+    cantidad: 75,
+    locationId: 3,
+    receivedAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   },
 ];
 
@@ -363,26 +390,268 @@ export const handlers = [
     }
   ),
 
-  // Manejador para obtener todos los pallets (GET)
+  // Manejador para obtener todos los pallets (GET) - FIXED FORMAT FOR API RESPONSE HANDLER COMPATIBILITY
   http.get('/api/pallets', () => {
-    return HttpResponse.json(mockPallets);
+    console.log('MSW: Handler /api/pallets llamado');
+    console.log('MSW: Devolviendo pallets:', mockPallets.length, 'pallets');
+    return HttpResponse.json({
+      success: true,
+      data: mockPallets,
+      message: 'Pallets obtenidos exitosamente',
+      statusCode: 200,
+    });
   }),
 
-  // Manejador para obtener un pallet por su ID (GET con parámetros)
+  // Manejador para obtener un pallet por su ID (GET con parámetros) - FIXED FORMAT
   http.get<{ id: string }>('/api/pallets/:id', ({ params }) => {
     const { id } = params;
     const pallet = mockPallets.find((p) => p.id === Number(id));
 
     if (pallet) {
-      return HttpResponse.json(pallet);
+      return HttpResponse.json({
+        success: true,
+        data: pallet,
+        message: 'Pallet encontrado exitosamente',
+        statusCode: 200,
+      });
     } else {
       // Devuelve un error 404 si el pallet no se encuentra
       return HttpResponse.json(
-        { message: 'Pallet not found' },
+        {
+          success: false,
+          message: 'Pallet no encontrado',
+          statusCode: 404,
+        },
         { status: 404 }
       );
     }
   }),
 
-  // ... aquí puedes añadir más manejadores para productos, órdenes, etc.
+  // Endpoint para registrar entrada de pallets
+  http.post('/api/pallets/entrada', async ({ request }) => {
+    try {
+      const entradaData = (await request.json()) as Omit<
+        Pallet,
+        'id' | 'receivedAt' | 'updatedAt'
+      >;
+      const timestamp = new Date().toISOString();
+
+      // Validar datos requeridos
+      if (
+        !entradaData.nombre ||
+        !entradaData.estado ||
+        !entradaData.producto ||
+        !entradaData.cantidad
+      ) {
+        return HttpResponse.json(
+          {
+            success: false,
+            message:
+              'Faltan campos requeridos: nombre, estado, producto, cantidad',
+          },
+          { status: 400 }
+        );
+      }
+
+      // Validar que el estado sea válido
+      const estadosValidos = [
+        'disponible',
+        'en_uso',
+        'mantenimiento',
+        'dañado',
+      ];
+      if (!estadosValidos.includes(entradaData.estado)) {
+        return HttpResponse.json(
+          {
+            success: false,
+            message:
+              'Estado inválido. Los valores permitidos son: ' +
+              estadosValidos.join(', '),
+          },
+          { status: 400 }
+        );
+      }
+
+      // Validar que la cantidad sea un número positivo
+      if (entradaData.cantidad <= 0) {
+        return HttpResponse.json(
+          {
+            success: false,
+            message: 'La cantidad debe ser un número positivo',
+          },
+          { status: 400 }
+        );
+      }
+
+      // Crear nuevo pallet
+      const nuevoPallet: Pallet = {
+        id:
+          mockPallets.length > 0
+            ? Math.max(...mockPallets.map((p) => p.id)) + 1
+            : 1,
+        nombre: entradaData.nombre,
+        estado: entradaData.estado as
+          | 'disponible'
+          | 'en_uso'
+          | 'mantenimiento'
+          | 'dañado',
+        producto: entradaData.producto,
+        productId: entradaData.productId || 0, // Valor por defecto si no se proporciona
+        cantidad: entradaData.cantidad,
+        locationId: entradaData.locationId || 0, // Valor por defecto si no se proporciona
+        receivedAt: timestamp,
+        updatedAt: timestamp,
+      };
+
+      // Agregar a la lista de pallets
+      mockPallets.push(nuevoPallet);
+
+      // Registrar el movimiento
+      const movimiento: Movimiento = {
+        id: Date.now(),
+        tipo: 'entrada',
+        producto: entradaData.producto,
+        cantidad: entradaData.cantidad,
+        fecha: timestamp,
+        usuario: 'usuario_actual', // En un caso real, esto vendría del token de autenticación
+      };
+
+      // Actualizar el dashboard con el nuevo movimiento
+      const dashboardActualizado = actualizarDashboard(movimiento);
+
+      return HttpResponse.json({
+        success: true,
+        data: {
+          pallet: nuevoPallet,
+          dashboard: dashboardActualizado,
+          message: 'Pallet registrado exitosamente',
+        },
+      });
+    } catch (error) {
+      console.error('Error al registrar entrada de pallet:', error);
+      return HttpResponse.json(
+        { success: false, message: 'Error interno del servidor' },
+        { status: 500 }
+      );
+    }
+  }),
+
+  // Endpoint para registrar salida de pallets
+  http.post('/api/pallets/salida', async ({ request }) => {
+    try {
+      const salidaData = (await request.json()) as {
+        palletId: number;
+        cantidad: number;
+      };
+      const timestamp = new Date().toISOString();
+
+      // Validar datos requeridos
+      if (!salidaData.palletId || !salidaData.cantidad) {
+        return HttpResponse.json(
+          {
+            success: false,
+            message: 'Faltan campos requeridos: palletId, cantidad',
+          },
+          { status: 400 }
+        );
+      }
+
+      // Validar que la cantidad sea un número positivo
+      if (salidaData.cantidad <= 0) {
+        return HttpResponse.json(
+          {
+            success: false,
+            message: 'La cantidad debe ser un número positivo',
+          },
+          { status: 400 }
+        );
+      }
+
+      // Buscar el pallet
+      const palletIndex = mockPallets.findIndex(
+        (p) => p.id === salidaData.palletId
+      );
+
+      if (palletIndex === -1) {
+        return HttpResponse.json(
+          {
+            success: false,
+            message: 'Pallet no encontrado',
+            errorCode: 'PALLET_NOT_FOUND',
+          },
+          { status: 404 }
+        );
+      }
+
+      const pallet = mockPallets[palletIndex];
+
+      // Validar que el pallet esté disponible
+      if (pallet.estado !== 'disponible') {
+        return HttpResponse.json(
+          {
+            success: false,
+            message: `El pallet no está disponible. Estado actual: ${pallet.estado}`,
+            errorCode: 'PALLET_NOT_AVAILABLE',
+            estadoActual: pallet.estado,
+          },
+          { status: 400 }
+        );
+      }
+
+      // Validar que haya suficiente stock
+      if (pallet.cantidad < salidaData.cantidad) {
+        return HttpResponse.json(
+          {
+            success: false,
+            message: `Cantidad insuficiente. Stock actual: ${pallet.cantidad}`,
+            errorCode: 'INSUFFICIENT_STOCK',
+            stockActual: pallet.cantidad,
+          },
+          { status: 400 }
+        );
+      }
+
+      // Actualizar la cantidad del pallet
+      pallet.cantidad -= salidaData.cantidad;
+      pallet.updatedAt = timestamp;
+
+      // Si la cantidad llega a cero, eliminar el pallet
+      let palletEliminado = false;
+      if (pallet.cantidad <= 0) {
+        mockPallets.splice(palletIndex, 1);
+        palletEliminado = true;
+      }
+
+      // Registrar el movimiento
+      const movimiento: Movimiento = {
+        id: Date.now(),
+        tipo: 'salida',
+        producto: pallet.producto,
+        cantidad: salidaData.cantidad,
+        fecha: timestamp,
+        usuario: 'usuario_actual', // En un caso real, esto vendría del token de autenticación
+      };
+
+      // Actualizar el dashboard con el nuevo movimiento
+      const dashboardActualizado = actualizarDashboard(movimiento);
+
+      return HttpResponse.json({
+        success: true,
+        data: {
+          pallet: !palletEliminado ? pallet : null,
+          dashboard: dashboardActualizado,
+          message: !palletEliminado
+            ? `Salida registrada. Stock restante: ${pallet.cantidad}`
+            : 'Pallet agotado y eliminado del inventario',
+          palletEliminado,
+        },
+      });
+    } catch (error) {
+      console.error('Error al registrar salida de pallet:', error);
+      return HttpResponse.json(
+        { success: false, message: 'Error interno del servidor' },
+        { status: 500 }
+      );
+    }
+  }),
 ];
