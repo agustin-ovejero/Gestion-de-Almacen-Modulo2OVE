@@ -28,5 +28,17 @@ export interface DashboardData {
   actividadReciente: Movimiento[];
 }
 
+export interface Pallet {
+  id: number;
+  nombre: string; // Nombre del pallet
+  estado: 'disponible' | 'en_uso' | 'mantenimiento' | 'dañado';
+  producto: string; // Nombre del producto
+  productId: number; // ID del producto (para referencias)
+  cantidad: number; // Cantidad de unidades
+  locationId: number; // Ubicación en el almacén
+  receivedAt: string; // Fecha de registro
+  updatedAt?: string; // Fecha de última actualización (opcional)
+}
+
 // Exportar todos los tipos
 // Los tipos están definidos directamente en este archivo
