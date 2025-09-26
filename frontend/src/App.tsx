@@ -1,7 +1,9 @@
-import { HashRouter, Routes, Route } from 'react-router-dom';
+import { HashRouter, Routes, Route, Link } from 'react-router-dom';
 import { LoginPage } from './pages/LoginPage';
 import Dashboard from './pages/Dashboard';
 import Inventario from './pages/Inventario';
+import Reportes from './pages/Reportes';
+import Entrada from './pages/Entrada_Salida';
 import './App.css';
 
 function App() {
@@ -9,9 +11,9 @@ function App() {
     <HashRouter>
       <div>
         <h1>Módulo de Gestión de Almacén</h1>
-        {/* <nav style={{ borderBottom: '1px solid #ccc', paddingBottom: '10px' }}>
+        <nav style={{ borderBottom: '1px solid #ccc', paddingBottom: '10px' }}>
           <Link to="/login">Login</Link>
-        </nav> */}
+        </nav>
 
         <main style={{ paddingTop: '20px' }}>
           {/* Aquí se renderizará el componente de la página actual */}
@@ -19,6 +21,8 @@ function App() {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/inventario" element={<Inventario />} />
+            <Route path="/reportes" element={<Reportes />} />
+            <Route path="/entrada_salida" element={<Entrada />} />
           </Routes>
         </main>
       </div>
