@@ -48,7 +48,10 @@ export default function Dashboard() {
             <Book className="w-5 h-5" />
             <span>Entrada/ Salida</span>
           </button>
-          <button className="flex items-center space-x-2 w-full px-3 py-2 rounded hover:bg-teal-600">
+          <button
+            className="flex items-center space-x-2 w-full px-3 py-2 rounded hover:bg-teal-600"
+            onClick={() => navigate('/almacen')}
+          >
             <MapPin className="w-5 h-5" />
             <span>Almacén</span>
           </button>
@@ -59,7 +62,10 @@ export default function Dashboard() {
             <List className="w-5 h-5" />
             <span>Reportes</span>
           </button>
-          <button className="flex items-center space-x-2 w-full px-3 py-2 rounded hover:bg-teal-600">
+          <button
+            className="flex items-center space-x-2 w-full px-3 py-2 rounded hover:bg-teal-600"
+            onClick={() => navigate('/clientes_proveedores')}
+          >
             <Users className="w-5 h-5" />
             <span>Clientes/prov</span>
           </button>

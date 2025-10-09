@@ -50,7 +50,10 @@ export default function Reportes() {
             <Box className="w-5 h-5" />
             <span>Inventario</span>
           </button>
-          <button className="flex items-center space-x-2 w-full px-3 py-2 rounded hover:bg-teal-600">
+          <button
+            className="flex items-center space-x-2 w-full px-3 py-2 rounded hover:bg-teal-600"
+            onClick={() => navigate('/entrada_salida')}
+          >
             <Book className="w-5 h-5" />
             <span>Entrada/ Salida</span>
           </button>
@@ -65,7 +68,10 @@ export default function Reportes() {
             <List className="w-5 h-5" />
             <span>Reportes</span>
           </button>
-          <button className="flex items-center space-x-2 w-full px-3 py-2 rounded hover:bg-teal-600">
+          <button
+            className="flex items-center space-x-2 w-full px-3 py-2 rounded hover:bg-teal-600"
+            onClick={() => navigate('/clientes_proveedores')}
+          >
             <Users className="w-5 h-5" />
             <span>Clientes/prov</span>
           </button>
