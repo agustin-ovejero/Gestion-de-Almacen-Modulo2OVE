@@ -18,7 +18,6 @@ function App() {
         </nav>
 
         <main style={{ paddingTop: '20px' }}>
-          {/* Aquí se renderizará el componente de la página actual */}
           <Routes>
             <Route path="/login" element={<LoginPage />} />
             <Route path="/dashboard" element={<Dashboard />} />
